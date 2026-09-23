@@ -1,0 +1,16 @@
+# Ignore other game files
+maze.html
+start_maze.bat
+pico.html
+start_pico.bat
+tower.html
+start_tower.bat
+asmr_tower.html
+start_asmr_tower.bat
+js/asmr_audio.js
+js/asmr_tower.js
+js/pico_ai.js
+js/pico_audio.js
+js/pico_game.js
+js/pico_levels.js
+js/pico_physics.js

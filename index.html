@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perpustakaan Rapi - Game Susun Buku 3D First-Person</title>
+    <meta name="description" content="Game 3D POV orang pertama yang santai dan memuaskan untuk merapikan buku di lantai dan menyusunnya ke rak berdasarkan Genre, Judul, dan Jilid.">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Three.js (Local offline first, CDN fallback) -->
+    <script src="js/three.min.js"></script>
+    <script>
+        if (typeof THREE === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
+        }
+    </script>
+</head>
+<body>
+
+    <!-- 3D Canvas Viewport -->
+    <div id="canvas-container"></div>
+
+    <!-- Crosshair / Titik Fokus Anti-Pusing -->
+    <div id="crosshair">
+        <div class="dot"></div>
+        <div class="circle"></div>
+    </div>
+
+    <!-- HUD Bagian Atas -->
+    <header id="hud-header">
+        <div class="hud-panel">
+            <span class="level-badge" id="hud-level">LEVEL 1 / 10</span>
+            <h2 class="level-title" id="hud-level-title">Pemula Perpustakaan</h2>
+            <div class="progress-container">
+                <div class="progress-label-row">
+                    <span>Buku Tersusun</span>
+                    <strong id="hud-books-progress">0 / 5 Buku</strong>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="hud-books-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hud-actions">
+            <button class="btn-icon" id="btn-help" title="Lihat Panduan Susunan Rak">
+                📖 <span>Panduan Rak</span> <kbd>TAB</kbd>
+            </button>
+            <button class="btn-icon" id="btn-settings" title="Pengaturan Kontrol & Audio">
+                ⚙️ <span>Pengaturan</span>
+            </button>
+            <button class="btn-icon" id="btn-restart" title="Ulangi Level Ini">
+                🔄 <span>Ulangi</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Prompt Interaksi Tengah Layar -->
+    <div id="interaction-prompt" class="hidden">
+        <div class="prompt-badge">Tekan <kbd>E</kbd> / Klik Kiri</div>
+        <div class="prompt-desc">Ambil Buku</div>
+    </div>
+
+    <!-- Kartu Buku yang Sedang Dipegang (Kanan Bawah) -->
+    <div id="held-book-card" class="hidden">
+        <div class="card-top-row">
+            <span class="held-badge" id="held-genre-badge">👻 Horor</span>
+            <span class="held-action-hint">Bawa ke Rak</span>
+        </div>
+        <h3 class="held-title" id="held-title">Misteri Rumah Tua</h3>
+        <p class="held-part" id="held-part">Part 1 (Pintu Terlarang)</p>
+        <p class="held-author" id="held-author">Penulis: R. K. Dananjaya</p>
+        <p class="held-synopsis" id="held-synopsis">Sebuah manor tua di atas bukit menyimpan jeritan dari masa lalu.</p>
+    </div>
+
+    <!-- Wadah Pesan Toast (Kiri Bawah) -->
+    <div id="toast-container"></div>
+
+    <!-- Start / Welcome Screen Overlay -->
+    <div id="start-screen">
+        <div class="start-content">
+            <div class="start-logo">📚✨</div>
+            <h1 class="start-title">Perpustakaan Rapi</h1>
+            <p class="start-desc">
+                Buku-buku berharga berserakan di lantai perpustakaan! Ambil satu per satu, periksa detailnya, lalu susun ke rak yang tepat berdasarkan <strong>Genre</strong>, <strong>Judul Serial</strong>, dan <strong>Urutan Part (Part 1, 2, 3...)</strong>.
+            </p>
+
+            <div class="controls-guide-grid">
+                <div class="guide-item">
+                    <kbd>W A S D</kbd> <span>Berjalan & Bergerak</span>
+                </div>
+                <div class="guide-item">
+                    <kbd>Mouse</kbd> <span>Melihat Sekeliling (Halus)</span>
+                </div>
+                <div class="guide-item">
+                    <kbd>E / Klik Kiri</kbd> <span>Ambil / Masukkan ke Rak</span>
+                </div>
+                <div class="guide-item">
+                    <kbd>G</kbd> <span>Letakkan Buku di Lantai</span>
+                </div>
+                <div class="guide-item">
+                    <kbd>TAB</kbd> <span>Buka Katalog Panduan Rak</span>
+                </div>
+                <div class="guide-item">
+                    <kbd>ESC</kbd> <span>Tutup Menu / Lepas Kursor</span>
+                </div>
+            </div>
+
+            <button class="btn-primary" id="btn-start-game">Mulai Merapikan (Level 1) 🚀</button>
+        </div>
+    </div>
+
+    <!-- Modal Panduan / Katalog Susunan Rak -->
+    <div class="modal-overlay" id="catalog-modal">
+        <div class="modal-box">
+            <button class="modal-close-btn" id="btn-close-catalog">&times;</button>
+            <h2 class="modal-title">📖 Katalog Susunan Rak</h2>
+            <p class="modal-subtitle">Gunakan panduan ini untuk mengelompokkan buku sesuai serial & urutan jilidnya.</p>
+            <div id="catalog-content"></div>
+        </div>
+    </div>
+
+    <!-- Modal Pengaturan Sensitivitas & Audio -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal-box" style="max-width: 480px;">
+            <button class="modal-close-btn">&times;</button>
+            <h2 class="modal-title">⚙️ Pengaturan Game</h2>
+            <p class="modal-subtitle">Sesuaikan kenyamanan kontrol kamera dan audio.</p>
+
+            <div class="settings-group">
+                <div class="settings-label-row">
+                    <span>Sensitivitas Mouse (POV)</span>
+                    <span id="sens-val">40%</span>
+                </div>
+                <p class="settings-desc">Diatur lembut secara default agar pandangan tidak tajam dan tidak pusing.</p>
+                <input type="range" id="sensitivity-slider" min="0.05" max="1.0" step="0.05" value="0.4">
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-label-row">
+                    <span>Volume Efek Suara (SFX)</span>
+                </div>
+                <input type="range" id="sfx-slider" min="0" max="1" step="0.05" value="0.8">
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-label-row">
+                    <span>Volume Musik Lofi / Suasana</span>
+                </div>
+                <input type="range" id="music-slider" min="0" max="1" step="0.05" value="0.4">
+            </div>
+
+            <div class="switch-row">
+                <span>Musik Suasana Perpustakaan</span>
+                <input type="checkbox" id="ambient-toggle" checked style="width: 20px; height: 20px; cursor: pointer;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Level Selesai -->
+    <div class="modal-overlay" id="level-win-modal">
+        <div class="modal-box" style="max-width: 480px; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 8px;">🎉✨</div>
+            <h2 class="modal-title" id="win-level-title">Level Selesai!</h2>
+            <p class="modal-subtitle" id="win-subtitle">Buku berhasil dirapikan dengan sempurna</p>
+            
+            <div class="win-stars" id="win-stars">★★★</div>
+
+            <div class="win-stats-grid">
+                <div>
+                    <div class="win-stat-label">Waktu Pengerjaan</div>
+                    <div class="win-stat-val" id="win-time">45 Detik</div>
+                </div>
+                <div>
+                    <div class="win-stat-label">Jumlah Kesalahan</div>
+                    <div class="win-stat-val" id="win-mistakes">0</div>
+                </div>
+            </div>
+
+            <button class="btn-primary" id="btn-next-level">Lanjut ke Level Berikutnya ➡️</button>
+        </div>
+    </div>
+
+    <!-- Modal Kemenangan Game (Level 10 Complete) -->
+    <div class="modal-overlay" id="game-victory-modal">
+        <div class="modal-box" style="max-width: 540px; text-align: center;">
+            <div style="font-size: 4rem; margin-bottom: 10px;">🏆👑</div>
+            <h2 class="modal-title" style="color: #ffd700;">Selamat, Pustakawan Agung!</h2>
+            <p class="modal-subtitle">Anda telah berhasil menuntaskan seluruh 10 Level dan menata seluruh 35 buku di perpustakaan utama dengan sangat rapi dan tertib.</p>
+
+            <div style="background: rgba(212, 175, 55, 0.15); border: 1px solid var(--gold-primary); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+                <p style="font-size: 0.85rem; color: var(--gold-light); font-weight: 700; letter-spacing: 1px; margin-bottom: 4px;">GELAR PENGHARGAAN</p>
+                <h3 style="font-family: 'Playfair Display', serif; font-size: 1.5rem; color: #ffffff;">Master Grand Librarian</h3>
+            </div>
+
+            <button class="btn-primary" id="btn-play-again">Main Lagi dari Level 1 🔄</button>
+        </div>
+    </div>
+
+    <!-- Game Scripts (ES Modules) -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
